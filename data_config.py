@@ -995,6 +995,13 @@ def print_values_from_paper():
         print("\t", k, ":")
         for v2 in v:
             print("\t\t", v2)
+    print("resulting capacities:\n")
+    for k, v in enumerate(IRP2030_ENERGY_MIX):
+        print("  ", years_str["date"].values[k], ":")
+        for energy_type in ENERGY_TYPES:
+            print("\t", energy_type, "-", "maximal:",
+                  v[energy_type]*IRP2030_CAPACITIES[k],
+                  v[energy_type])
     print("-" * 80)
     print("capacity changes green continuation case:\n")
     for k, v in IRP2030_CONTINUED_CAPACITY_CHANGES.items():
