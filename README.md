@@ -1,15 +1,20 @@
 # Modelling of a Power Utility Firm
 
-This is the official implementation of the paper [The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios]().
+This is the official implementation of the paper [The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086).
 
 
 ## Installation & Requirements
 This code was executed using Python 3.7.
-download repo (if wanted, install miniconda and 
-make a new environment). then go to main directory and install needed libraries:
-````shell
+
+To install requirements, download this Repo and cd into it.
+
+Then create a new environment and install all dependencies and this repo.
+With [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html):
+ ```sh
+conda create --name CarbonCost python=3.7
+conda activate CarbonCost
 pip install -r requirements.txt
-````
+ ```
 
 
 ## Usage
@@ -95,6 +100,31 @@ pip install -r requirements.txt
   python run.py --function=multiplot --config=joint_defprob_instdefprob_bondprice_plot_config
   ```
 
+
+---
+
+## License
+
+This code can be used in accordance with the [LICENSE](LICENSE).
+
+---
+
+## Citation
+
+If you use this code for your publications, please cite our paper:
+[The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086).
+```
+@article{
+      krach2023financialimpact,
+      title={The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios}, 
+      author={Krach, Florian and Macrina, Andrea and Kanter, Ashley and Hampwaye, Eba and Hlalukana, Siphokazi and Ratelee, Nchakha},
+      year={2023},
+      url={https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086},
+}
+```
+
+
+---
 
 
 
