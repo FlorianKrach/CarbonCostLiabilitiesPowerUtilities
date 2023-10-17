@@ -622,6 +622,7 @@ def plot_running_default_prob_and_scenarios(
         plot_scenarios_only=False,
         plot_postfix="", default_prob_credit_ratings=None,
         electricity_price_scaling_factor=None, ax=None,
+        plot_default_probs_only=False,
         **kwargs):
     """
 
@@ -653,6 +654,8 @@ def plot_running_default_prob_and_scenarios(
             ratings
         ax: matplotlib axis object, possibility to plot on existing axis for
             compatibility with function multiplot
+        plot_default_probs_only: bool, if True, then only the default probs are
+            plotted
 
         other args see compute_default_probability
 
@@ -719,48 +722,59 @@ def plot_running_default_prob_and_scenarios(
             ax2 = ax1.twinx()
     else:
         ax1, ax2 = ax
+    if not plot_default_probs_only:
+        ax_default_probs = ax2
+    else:
+        ax_default_probs = ax1
     if default_prob_credit_ratings is not None and not plot_scenarios_only:
         for credit_rating, default_prob in default_prob_credit_ratings.items():
-            ax2.plot(
+            ax_default_probs.plot(
                 timegrid[:-1], default_prob[:len(timegrid)-1],
                 label="{}".format(credit_rating),
                 color="gray", ls="-", alpha=0.75)
-            ax2.text(
+            ax_default_probs.text(
                 timegrid[-2]+0.5, default_prob[:len(timegrid)][-2]-0.01,
                 "{}".format(credit_rating), color="gray", alpha=0.75)
     for i, running_default_prob in enumerate(running_default_probs):
         # print("scenario {} -- running default prob: \n{}".format(
         #     scenario_names[i], running_default_prob))
-        ax1.plot(timegrid[:-1],
-                 scenarios_emission_prices[i]*inv_discounting_factor,
-                 label="{}".format(NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
-                 color="C{}".format(i), ls="-")
+        if not plot_default_probs_only:
+            ax1.plot(timegrid[:-1],
+                     scenarios_emission_prices[i]*inv_discounting_factor,
+                     label="{}".format(NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
+                     color="C{}".format(i), ls="-")
         if not plot_scenarios_only:
-            ax2.plot(
+            ax_default_probs.plot(
                 timegrid, running_default_prob,
-                label="probability of default -- {}".format(
+                label="{}".format(
                     NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
                 color="C{}".format(i), ls="--")
     ax1.set_xlabel('time')
-    ax1.set_ylabel('$CO_2e$ price $[ZAR/kg]$')
+    if not plot_default_probs_only:
+        ax1.set_ylabel('$CO_2e$ price $[ZAR/kg]$')
     legend_elements = None
     labels = None
     if not plot_scenarios_only:
         y2label = "Probability of default" if use_running_default_probs \
             else "Instantaneous probability of default"
-        ax2.set_ylabel(y2label)
+        ax_default_probs.set_ylabel(y2label)
         if ax is None:
             ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
 
         legend_elements = [
             Line2D([0], [0], color='black', label='$CO_2e$ price'),
             Line2D([0], [0], color='black', ls="--", label=y2label),]
+        if plot_default_probs_only:
+            legend_elements = legend_elements[1:]
         labels = [l.get_label() for l in legend_elements]
         if ax is None:
             ax2.legend(handles=legend_elements, loc='lower center',
                        bbox_to_anchor=(0.5, 1.1), ncol=2)
         # ax2.legend(loc='upper left', bbox_to_anchor=(1.2, 0.49))
-        ax1.set_title(y2label+" and $CO_2e$ price")
+        title_ = y2label
+        if not plot_default_probs_only:
+            title_ += " and $CO_2e$ price"
+        ax1.set_title(title_)
     else:
         if ax is None:
             ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
@@ -838,6 +852,7 @@ def plot_bond_price_term_structure(
         mean_percentage_jump=0.1, scenario_names=None, timegrid=None,
         use_running_default_probs=True, plot_postfix="",
         electricity_price_scaling_factor=None, ax=None,
+        plot_default_probs_only=False,
         **kwargs):
     """
     this function plots the term structure of the bond price for different
@@ -887,24 +902,38 @@ def plot_bond_price_term_structure(
         ax2 = ax1.twinx()
     else:
         ax1, ax2 = ax
+    if not plot_default_probs_only:
+        ax_default_probs = ax2
+    else:
+        ax_default_probs = ax1
     for i, bond_price in enumerate(bond_prices):
         # print("scenario {} -- running default prob: \n{}".format(
         #     scenario_names[i], running_default_prob))
-        ax1.plot(timegrid[:-1],
-                 scenarios_emission_prices[i]*inv_discounting_factor,
-                 label="{}".format(NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
-                 color="C{}".format(i), ls="-")
-        ax2.plot(timegrid, bond_price, label="{}".format(
-            NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
-                 color="C{}".format(i), ls="--")
+        if not plot_default_probs_only:
+            ax1.plot(
+                timegrid[:-1],
+                scenarios_emission_prices[i]*inv_discounting_factor,
+                label="{}".format(NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
+                color="C{}".format(i), ls="-")
+        ax_default_probs.plot(
+            timegrid, bond_price, label="{}".format(
+                NGFS_SCENARIO_NAMES_DICT[scenario_names[i]]),
+            color="C{}".format(i), ls="--")
     ax1.set_xlabel('time')
-    ax1.set_ylabel('$CO_2e$ price $[ZAR/kg]$')
-    ax2.set_ylabel('bond price')
+    if not plot_default_probs_only:
+        ax1.set_ylabel('$CO_2e$ price $[ZAR/kg]$')
+    ax_default_probs.set_ylabel('bond price')
     legend_elements = [
         Line2D([0], [0], color='black', label='$CO_2e$ price'),
         Line2D([0], [0], color='black', ls="--", label="bond price"), ]
+    if plot_default_probs_only:
+        legend_elements = legend_elements[1:]
     labels = [l.get_label() for l in legend_elements]
-    ax1.set_title("Bond price and $CO_2e$ price for different maturities")
+    title_ = "Bond price"
+    if not plot_default_probs_only:
+        title_ += " and $CO_2e$ price"
+    title_ += " for different maturities"
+    ax1.set_title(title_)
     if not os.path.exists("results"):
         os.mkdir("results")
     if ax is None:
