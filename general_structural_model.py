@@ -74,6 +74,7 @@ def compute_assets_liabilities_multipath(
         capacities, electricity_price_paths, energy_mix, emission_prices,
         NET_investments, running_costs,
         power_production_factor,
+        energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         start_time=0, investments=None,
@@ -114,6 +115,8 @@ def compute_assets_liabilities_multipath(
         power_production_factor: list of dicts, the factor how much power is
             produced for each energy type from the theoretical realizable power
             output in each time step
+        energy_sales_factor: list of floats, the factor how much of the produced
+            energy is actually sold in each time step
         time_amount_per_step: float, the amount of time in each time step in
             the correct unit (e.g. hours if KWh is used)
         emissions_factor: float, the emissions factor by which the model
@@ -178,7 +181,7 @@ def compute_assets_liabilities_multipath(
                 time_amount_per_step
             energy_sales += \
                 electricity_price_paths[:, t] * produced_energy / \
-                inv_discounting_factor[t]
+                inv_discounting_factor[t] * energy_sales_factor[t]
             pos_emissions += \
                 produced_energy * emissions_factor * \
                 energy_types_desc[energy_type]['emission_per_energy_unit']
@@ -229,7 +232,7 @@ def compute_assets_liabilities(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, electricity_prices, energy_mix, emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -280,6 +283,7 @@ def compute_assets_liabilities(
         emissions_factor=emissions_factor,
         depreciation_factor=depreciation_factor,
         power_production_factor=power_production_factor,
+        energy_sales_factor=energy_sales_factor,
         NET_emission_reduction_per_price_unit=
         NET_emission_reduction_per_price_unit,)
 
@@ -288,7 +292,7 @@ def get_min_electricity_price_to_stay_alive(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, energy_mix, emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -320,6 +324,7 @@ def get_min_electricity_price_to_stay_alive(
         NET_investments:
         running_costs:
         power_production_factor:
+        energy_sales_factor:
         time_amount_per_step:
         emissions_factor:
         depreciation_factor:
@@ -392,12 +397,13 @@ def get_min_electricity_price_to_stay_alive(
             NET_emission_reduction_per_price_unit[t]*NET_investments[t]
         emissions = pos_emissions - neg_emissions
         emission_costs = emission_prices[t]*emissions
+        sold_energy = total_energy_produced * energy_sales_factor[t]
 
         # get electricity price, s.t. energy_sale + capital_spending = all costs
         elect_price = \
             (emission_costs + maintenance_costs + fuel_costs + investments[t] +
              running_costs[t] + NET_investments[t]/inv_discounting_factor[t] +
-             depriciation_costs - capital_spending[t])/total_energy_produced * \
+             depriciation_costs - capital_spending[t])/sold_energy * \
             inv_discounting_factor[t]
         needed_electricity_prices.append(elect_price)
 
@@ -408,7 +414,7 @@ def plot_min_electricity_prices(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, energy_mix, scenarios_emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -439,6 +445,7 @@ def plot_min_electricity_prices(
         NET_investments:
         running_costs:
         power_production_factor:
+        energy_sales_factor:
         time_amount_per_step:
         emissions_factor:
         depreciation_factor:
@@ -468,6 +475,7 @@ def plot_min_electricity_prices(
             investments=investments, inflation_factor=inflation_factor,
             init_capital_spending=init_capital_spending,
             power_production_factor=power_production_factor,
+            energy_sales_factor=energy_sales_factor,
             time_amount_per_step=time_amount_per_step,
             emissions_factor=emissions_factor,
             depreciation_factor=depreciation_factor,
@@ -522,7 +530,7 @@ def compute_default_probability(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, electricity_price_paths, energy_mix, emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -552,6 +560,7 @@ def compute_default_probability(
         NET_investments:
         running_costs:
         power_production_factor:
+        energy_sales_factor:
         time_amount_per_step:
         emissions_factor:
         depreciation_factor:
@@ -575,6 +584,7 @@ def compute_default_probability(
             running_costs=running_costs, fuel_prices=fuel_prices,
             inflation_factor=inflation_factor,
             power_production_factor=power_production_factor,
+            energy_sales_factor=energy_sales_factor,
             time_amount_per_step=time_amount_per_step,
             emissions_factor=emissions_factor,
             depreciation_factor=depreciation_factor,
@@ -608,7 +618,7 @@ def plot_running_default_prob_and_scenarios(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, energy_mix, scenarios_emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -623,6 +633,7 @@ def plot_running_default_prob_and_scenarios(
         plot_postfix="", default_prob_credit_ratings=None,
         electricity_price_scaling_factor=None, ax=None,
         plot_default_probs_only=False,
+        first_fixed=False,
         **kwargs):
     """
 
@@ -656,6 +667,7 @@ def plot_running_default_prob_and_scenarios(
             compatibility with function multiplot
         plot_default_probs_only: bool, if True, then only the default probs are
             plotted
+        first_fixed: bool, if True, then the first electricity price is fixed
 
         other args see compute_default_probability
 
@@ -668,6 +680,7 @@ def plot_running_default_prob_and_scenarios(
         NET_investments:
         running_costs:
         power_production_factor:
+        energy_sales_factor:
         time_amount_per_step:
         emissions_factor:
         depreciation_factor:
@@ -688,7 +701,8 @@ def plot_running_default_prob_and_scenarios(
             electricity_price_models.sample_exponential_percentage_price_jumps_paths(
                 mean_percentage=mean_percentage_jump, T=maturity,
                 initial_price=init_electricity_price, nb_samples=nb_paths,
-                factors=electricity_price_scaling_factor)
+                factors=electricity_price_scaling_factor,
+                initial_price_fixed=first_fixed)
         _, _, running_default_prob, running_default_prob_std = \
             compute_default_probability(
                 maturity=maturity, init_assets=init_assets,
@@ -703,6 +717,7 @@ def plot_running_default_prob_and_scenarios(
                 running_costs=running_costs, fuel_prices=fuel_prices,
                 use_running_default_probs=use_running_default_probs,
                 power_production_factor=power_production_factor,
+                energy_sales_factor=energy_sales_factor,
                 time_amount_per_step=time_amount_per_step,
                 emissions_factor=emissions_factor,
                 depreciation_factor=depreciation_factor,
@@ -799,7 +814,7 @@ def compute_bond_price(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, electricity_price_paths, energy_mix, emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -825,6 +840,7 @@ def compute_bond_price(
         inflation_factor=inflation_factor, fuel_prices=fuel_prices,
         use_running_default_probs=use_running_default_probs,
         power_production_factor=power_production_factor,
+        energy_sales_factor=energy_sales_factor,
         time_amount_per_step=time_amount_per_step,
         emissions_factor=emissions_factor,
         depreciation_factor=depreciation_factor,
@@ -840,7 +856,7 @@ def plot_bond_price_term_structure(
         max_maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, energy_mix, scenarios_emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -852,7 +868,7 @@ def plot_bond_price_term_structure(
         mean_percentage_jump=0.1, scenario_names=None, timegrid=None,
         use_running_default_probs=True, plot_postfix="",
         electricity_price_scaling_factor=None, ax=None,
-        plot_default_probs_only=False,
+        plot_default_probs_only=False, first_fixed=False,
         **kwargs):
     """
     this function plots the term structure of the bond price for different
@@ -870,7 +886,8 @@ def plot_bond_price_term_structure(
             electricity_price_models.sample_exponential_percentage_price_jumps_paths(
                 mean_percentage=mean_percentage_jump, T=max_maturity,
                 initial_price=init_electricity_price, nb_samples=nb_paths,
-                factors=electricity_price_scaling_factor)
+                factors=electricity_price_scaling_factor,
+                initial_price_fixed=first_fixed)
         bond_price = compute_bond_price(
             maturity=max_maturity, init_assets=init_assets,
             init_liabilities=init_liabilities,
@@ -884,6 +901,7 @@ def plot_bond_price_term_structure(
             running_costs=running_costs, fuel_prices=fuel_prices,
             use_running_default_probs=use_running_default_probs,
             power_production_factor=power_production_factor,
+            energy_sales_factor=energy_sales_factor,
             time_amount_per_step=time_amount_per_step,
             emissions_factor=emissions_factor,
             depreciation_factor=depreciation_factor,
@@ -994,7 +1012,7 @@ def plot_power_plant_cost_comparison(
         fig, axs = plt.subplots(
             (len(scenarios_emission_prices.tolist()) + plots_per_line-1) //
             plots_per_line,
-            plots_per_line, figsize=cost_comp_figsize)
+            plots_per_line, figsize=cost_comp_figsize, sharex=True, sharey=True)
         fig.tight_layout()
         for j, emission_prices in enumerate(scenarios_emission_prices):
             curr_ax = axs[j // plots_per_line, j % plots_per_line]
@@ -1051,7 +1069,8 @@ def plot_mean_electricity_prices_for_MPPJ(
         maturity, init_electricity_price, mean_percentages_to_plot,
         nb_paths, timegrid=None, inflation_factor=None, inflation_adjusted=True,
         seed=0, plot_mppj_std=False, plot_postfix=None,
-        electricity_price_scaling_factor=None, ax=None, **kwargs):
+        electricity_price_scaling_factor=None, ax=None, first_fixed=False,
+        **kwargs):
     """
     this function plots the mean electricity price for different mean
     percentage price jump values.
@@ -1082,7 +1101,8 @@ def plot_mean_electricity_prices_for_MPPJ(
             electricity_price_models.sample_exponential_percentage_price_jumps_paths(
                 mean_percentage=MPPJ, T=maturity,
                 initial_price=init_electricity_price, nb_samples=nb_paths,
-                factors=electricity_price_scaling_factor)
+                factors=electricity_price_scaling_factor,
+                initial_price_fixed=first_fixed)
         if inflation_adjusted and inflation_factor is not None:
             electricity_price_paths = electricity_price_paths / \
                 inflation_factor.reshape(1, -1).repeat(nb_paths, axis=0)
@@ -1090,6 +1110,10 @@ def plot_mean_electricity_prices_for_MPPJ(
             inflation_adjusted = False
         means.append(np.mean(electricity_price_paths, axis=0))
         stds.append(np.std(electricity_price_paths, axis=0))
+        print("MPPJ={} -- mean electricity price: \n{}".format(
+            MPPJ, means[-1]))
+        print("MPPJ={} -- std electricity price: \n{}".format(
+            MPPJ, stds[-1]))
 
     if ax is None:
         fig, ax1 = plt.subplots()
@@ -1182,6 +1206,7 @@ def plot_capacities_and_energy_mix(
     ax1.set_xlabel('time')
     ax1.set_ylabel('capacity [KW]')
     ax2.set_ylabel('proportion of energy mix')
+    ax2.set_ylim(0, 1)
     if not os.path.exists("results"):
         os.mkdir("results")
     title = "{} capacities & energy mix".format(
@@ -1203,7 +1228,7 @@ def fit_electricity_price_scaling_factors(
         maturity, init_assets, init_liabilities, inv_discounting_factor,
         capacities, energy_mix, emission_prices,
         NET_investments, running_costs,
-        power_production_factor,
+        power_production_factor, energy_sales_factor,
         time_amount_per_step=365*24., emissions_factor=1.,
         depreciation_factor=1.,
         energy_types_desc=ENERGY_TYPES_DESC,
@@ -1219,7 +1244,10 @@ def fit_electricity_price_scaling_factors(
         electricity_price_scaling_factor=None,
         first_fixed=True, fit_mppj=False, fit_init_assets=False,
         optimization_kwargs=None,
-        ax=None, **kwargs):
+        ax=None, single_factor_optimisation=False,
+        joint_optimisation=True, use_same_mp_for_all=True,
+        increasing_factors=False,
+        **kwargs):
     """
     this function fits the electricity price scaling factor to the market data
     of probabilities of default
@@ -1245,6 +1273,7 @@ def fit_electricity_price_scaling_factors(
         NET_investments:
         running_costs:
         power_production_factor:
+        energy_sales_factor:
         time_amount_per_step:
         emissions_factor:
         depreciation_factor:
@@ -1263,6 +1292,15 @@ def fit_electricity_price_scaling_factors(
         timegrid:
         ax: matplotlib axis object, possibility to plot on existing axis for
             compatibility with function multiplot
+        single_factor_optimisation: bool, if True, then the optimal factors are
+            computed for each maturity separately
+        joint_optimisation: bool, if True, then the optimal factors are computed
+            jointly for all maturities
+        use_same_mp_for_all: bool, if True, then the same mean percentage jump
+            is used for all maturities, otherwise a different one is fitted for
+            each maturity
+        increasing_factors: bool, if True, then the factors fitted are
+            increasing
     """
 
     def opt_func(
@@ -1286,7 +1324,8 @@ def fit_electricity_price_scaling_factors(
             electricity_price_models.sample_exponential_percentage_price_jumps_paths(
                 mean_percentage=mppj_param, T=maturity,
                 initial_price=init_electricity_price, nb_samples=nb_paths,
-                factors=_factors)
+                factors=_factors, use_same_mp_for_all=use_same_mp_for_all,
+                initial_price_fixed=first_fixed)
         _, _, default_prob_all_maturities, std = \
             compute_default_probability(
                 maturity=maturity, init_assets=init_assets*init_assets_param,
@@ -1303,10 +1342,45 @@ def fit_electricity_price_scaling_factors(
                 emissions_factor=emissions_factor,
                 depreciation_factor=depreciation_factor,
                 power_production_factor=power_production_factor,
+                energy_sales_factor=energy_sales_factor,
                 energy_types_desc=energy_types_desc,
                 NET_emission_reduction_per_price_unit=
                 NET_emission_reduction_per_price_unit, )
         diff = np.sum((default_prob_all_maturities - default_probs)**2)
+        return diff
+
+    def opt_func1(
+            factors, fit_index, factor_index, mppj_param, init_assets_param):
+        factors[fit_index] = factor_index
+        np.random.seed(seed)
+        electricity_price_paths = \
+            electricity_price_models.sample_exponential_percentage_price_jumps_paths(
+                mean_percentage=mppj_param, T=maturity,
+                initial_price=init_electricity_price, nb_samples=nb_paths,
+                factors=factors, use_same_mp_for_all=use_same_mp_for_all,
+                initial_price_fixed=first_fixed)
+        _, _, default_prob_all_maturities, std = \
+            compute_default_probability(
+                maturity=maturity, init_assets=init_assets*init_assets_param,
+                init_liabilities=init_liabilities,
+                inv_discounting_factor=inv_discounting_factor,
+                capacities=capacities,
+                electricity_price_paths=electricity_price_paths,
+                energy_mix=energy_mix, emission_prices=emission_prices,
+                NET_investments=NET_investments, investments=investments,
+                running_costs=running_costs,
+                use_running_default_probs=use_running_default_probs,
+                fuel_prices=fuel_prices, inflation_factor=inflation_factor,
+                time_amount_per_step=time_amount_per_step,
+                emissions_factor=emissions_factor,
+                depreciation_factor=depreciation_factor,
+                power_production_factor=power_production_factor,
+                energy_sales_factor=energy_sales_factor,
+                energy_types_desc=energy_types_desc,
+                NET_emission_reduction_per_price_unit=
+                NET_emission_reduction_per_price_unit, )
+        diff = np.sum((default_prob_all_maturities[fit_index+1] -
+                       default_probs[fit_index+1])**2)
         return diff
 
     if isinstance(fit_init_assets, float):
@@ -1326,30 +1400,71 @@ def fit_electricity_price_scaling_factors(
         x0 = np.concatenate([[init_assets_param], x0])
     if fit_mppj:
         x0 = np.concatenate([[mean_percentage_jump], x0])
-    t = time.time()
-    res = minimize(wrapper_opt_func, x0=x0, **optimization_kwargs)
-    opt_time = time.time() - t
-    optimal_factors = res.x
+
     mppj_param = mean_percentage_jump
+    init_assets_param = 1.
+    optimal_factors = x0
+    if joint_optimisation:
+        t = time.time()
+        res = minimize(wrapper_opt_func, x0=x0, **optimization_kwargs)
+        opt_time = time.time() - t
+        optimal_factors = res.x
     if fit_mppj:
         mppj_param = optimal_factors[0]
         optimal_factors = optimal_factors[1:]
-    init_assets_param = 1.
     if fit_init_assets:
         init_assets_param = optimal_factors[0]
         optimal_factors = optimal_factors[1:]
     if first_fixed:
         optimal_factors = np.concatenate([[1.], optimal_factors])
-    # print("optimization result:\n", res)
-    print("-"*80)
-    print("optimal factors:", optimal_factors)
-    if fit_mppj:
-        print("optimal mean percentage jump:", mppj_param)
-    if fit_init_assets:
-        print("optimal init assets param:", init_assets_param)
-    print("diff with optimal factors", wrapper_opt_func(res.x))
-    print("time for optimization:", opt_time)
-    print("-" * 80)
+    if joint_optimisation:
+        # print("optimization result:\n", res)
+        print("-"*80)
+        print("optimal factors:", optimal_factors)
+        if fit_mppj:
+            print("optimal mean percentage jump:", mppj_param)
+        if fit_init_assets:
+            print("optimal init assets param:", init_assets_param)
+        print("diff with optimal factors", wrapper_opt_func(res.x))
+        print("time for optimization:", opt_time)
+        print("-" * 80)
+
+    if single_factor_optimisation:
+        for i in range(len(optimal_factors)-1*first_fixed):
+            ind = i + 1*first_fixed
+            t = time.time()
+            minf = 0.2
+            if i > 0:
+                minf = optimal_factors[ind-1]
+            if use_same_mp_for_all:
+                grid = np.linspace(minf, 1.5, 100)
+            else:
+                grid = np.linspace(0., 0.2, 100)
+            diffs = [opt_func1(
+                optimal_factors, ind, factor, mppj_param,
+                init_assets_param) for factor in grid]
+            ind_min = np.argmin(diffs)
+            res = minimize(
+                lambda factor: opt_func1(
+                    optimal_factors, ind, factor, mppj_param,
+                    init_assets_param),
+                x0=grid[ind_min], **optimization_kwargs)
+            # print("grid", grid)
+            # print("diffs", diffs)
+            print("optimization factor {} -> time: {:.2f},".format(
+                ind, time.time() - t), end=" ")
+            print("min diff init grid search: {:.4e}".format(diffs[ind_min]), end=", ")
+            print("min factor init grid search: {:.4f}".format(grid[ind_min]), end=", ")
+            print("diff after optimization: {:.4e}".format(opt_func1(
+                optimal_factors, ind, res.x[0], mppj_param, init_assets_param)),
+                end=", ")
+            print("factor after optimization: {:.4f}".format(res.x[0]))
+            optimal_factors[ind] = res.x[0]
+            if res.x[0] < minf and increasing_factors:
+                print("WARNING: factor is smaller than previous factor -> use previous factor")
+                optimal_factors[ind] = minf
+        print("optimal factors after single factor optimization:\n[{}]".format(
+            ", ".join(["{}".format(f) for f in optimal_factors])))
 
     # compute default probs with optimal factors
     np.random.seed(seed)
@@ -1357,7 +1472,8 @@ def fit_electricity_price_scaling_factors(
         electricity_price_models.sample_exponential_percentage_price_jumps_paths(
             mean_percentage=mppj_param, T=maturity,
             initial_price=init_electricity_price, nb_samples=nb_paths,
-            factors=optimal_factors)
+            factors=optimal_factors, use_same_mp_for_all=use_same_mp_for_all,
+            initial_price_fixed=first_fixed)
     _, _, default_prob_all_maturities, std = \
         compute_default_probability(
             maturity=maturity, init_assets=init_assets*init_assets_param,
@@ -1374,9 +1490,13 @@ def fit_electricity_price_scaling_factors(
             emissions_factor=emissions_factor,
             depreciation_factor=depreciation_factor,
             power_production_factor=power_production_factor,
+            energy_sales_factor=energy_sales_factor,
             energy_types_desc=energy_types_desc,
             NET_emission_reduction_per_price_unit=
             NET_emission_reduction_per_price_unit, )
+
+    diff = np.sum((default_prob_all_maturities - default_probs) ** 2)
+    print("diff with optimal factors", diff)
 
     # plot market default probability curve and calibrated default prob curve
     if timegrid is None:
@@ -1387,7 +1507,7 @@ def fit_electricity_price_scaling_factors(
         ax1 = ax
     ax1.plot(timegrid, default_probs, label="market")
     ax1.plot(timegrid, default_prob_all_maturities,
-             label="calibrated model", color="C1")
+             label="calibrated model", color="C1", ls="--")
     # ci = np.sqrt(computed_default_probs_all_maturities[idx] -
     #               computed_default_probs_all_maturities[idx]**2) / \
     #      np.sqrt(nb_paths) * 1.96

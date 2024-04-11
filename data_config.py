@@ -328,13 +328,23 @@ US_INFLATION_FACTOR = np.cumprod(1+(us_interest_rate-us_real_rate)/100)
 NO_COST_SCENARIO = [0.]*TMAX
 ZA_CARBON_TAX_SCENARIO = [0.159] + list(
     0.159 * INFLATION_FACTOR/INV_DISCOUNTING_FACTOR)  # ZAR/kg
+ZA_LEVY_SACT_SCENARIO = copy.deepcopy(ZA_CARBON_TAX_SCENARIO)
+ZA_LEVY_SACT_SCENARIO[0] = 0.035
+for i in range(3):
+    ZA_LEVY_SACT_SCENARIO[i+1] = 0.035/INV_DISCOUNTING_FACTOR[i]
 df = pd.read_csv('data/ngfs_scenarios.csv', index_col=0)
 scenario_names = df.index.tolist()
 YEARS = np.arange(2022, 2051, 1)
 T50 = len(YEARS)-1
 EMISSION_PRICE_SCENRIOS = {
     "no_cost": NO_COST_SCENARIO[:T50],
-    "South African Carbon Tax": ZA_CARBON_TAX_SCENARIO[:T50]}
+    "South African Carbon Tax": ZA_CARBON_TAX_SCENARIO[:T50],
+    # "Env Levy SACT": ZA_LEVY_SACT_SCENARIO[:T50],
+}
+EMISSION_PRICE_SCENRIOS_LEVY = {
+    "no_cost": NO_COST_SCENARIO[:T50],
+    "South African Carbon Tax": ZA_LEVY_SACT_SCENARIO[:T50],
+}
 for scenario_name in scenario_names:
     prices = df.loc[scenario_name]*usd_to_zar_Apr2022*\
              usdJan2010_to_usdApr2022*10**-3
@@ -342,6 +352,10 @@ for scenario_name in scenario_names:
     f = interpolate.interp1d(times, prices)
     EMISSION_PRICE_SCENRIOS[scenario_name] = \
         f(YEARS[:-1])/US_INV_DISCOUNTING_FACTOR
+    EMISSION_PRICE_SCENRIOS_LEVY[scenario_name] = \
+        f(YEARS[:-1])/US_INV_DISCOUNTING_FACTOR
+    EMISSION_PRICE_SCENRIOS_LEVY[scenario_name][:4] = \
+        ZA_LEVY_SACT_SCENARIO[:4]
 
 NGFS_SCENARIO_NAMES_DICT = {
     "no_cost": "No Cost",
@@ -351,7 +365,9 @@ NGFS_SCENARIO_NAMES_DICT = {
     "Current Policies": "Current Policies",
     "Nationally Determined Contributions (NDCs)": "NDCs",
     "Net Zero 2050": "Net Zero 2050",
-    "Below 2C": "Below 2C",}
+    "Below 2C": "Below 2C",
+    "Env Levy SACT": "Levy & SACT",
+}
 
 
 
@@ -368,7 +384,7 @@ current_nuclear_price = 1663*usd_to_zar_Apr2022*usdSep2021_to_usdApr2022/\
                         INFLATION_FACTOR[0]  # in ZAR/kg
 current_gas_price = 3111.796/100/gas_kg_to_kwh/INFLATION_FACTOR[0]  # in ZAR/kWh
 eskom_coal_price = 69.99*10**9/(170514*10**6*0.61)/INFLATION_FACTOR[0]  # in ZAR/kg, from table 72 and burn rate from 8.7.16 in https://www.nersa.org.za/wp-content/uploads/bsk-pdf-manager/2023/02/Eskoms-MYPD5-RfD-for-202324FY-and-202425FY_Public-Version.pdf
-eskom_diesel_price = np.mean((23.51,20.36,20.28,20.22))/INFLATION_FACTOR[0] # mean of eskom's curent normal contact prices stated in https://businesstech.co.za/news/energy/661635/diesel-sharks-smell-blood-at-eskom/
+eskom_diesel_price = np.mean((23.51,20.36,20.28,20.22))/INFLATION_FACTOR[0] # in ZAR/l mean of eskom's curent normal contact prices stated in https://businesstech.co.za/news/energy/661635/diesel-sharks-smell-blood-at-eskom/
 
 FUEL_PRICES_PER_AMOUNT_UNIT = dict(
     # ESKOM pays 1/2.257 of actual coal price
@@ -395,8 +411,10 @@ NET_EMISSION_REDUCTION_PER_PRICE_UNIT = [0.]*TMAX
 
 # ------ ESKOM VALUES -------
 CURRENT_EQUITY = float(235314*10**6)  # in ZAR
-CURRENT_YEARLY_SOLD_ENERGY = float(192.005*10**9)  # in kWh
-CURRENT_ELECTRICITY_PRICE = 1.2275 * 1.0961  # in ZAR/kWh
+CURRENT_YEARLY_SOLD_ENERGY = float(198.3*10**9)  # in kWh
+CURRENT_YEARLY_PRODUCED_ENERGY = (191.5+12.4+1.8+16+8.5)*10**9  # in kWh
+CURRENT_YEARLY_PRODUCED_ENERGY_NO_IMPORTS = (191.5+12.4+1.8+16)*10**9  # in kWh
+CURRENT_ELECTRICITY_PRICE = 1.2275 # in ZAR/kWh
 CURRENT_DEPRECIATION_COSTS = 32009*10**6  # in ZAR, not used as included in ENERGY_DESC
 maintenance_costs = 24113*10**6  # in ZAR
 labour_costs = 32.985*10**9
@@ -406,8 +424,11 @@ RUNNING_COSTS = \
 eskom_co2e_emissions_2021_2022 = 207230321 *10**3  # in kg
 environmental_levy_2021 = 7191*10**6  # in ZAR
 env_levy_per_co2e = environmental_levy_2021/eskom_co2e_emissions_2021_2022  # ZAR/kg
-additional_energy_consumed_by_pumped_storage = \
-    2732*MW_to_KW*hours_per_year*0.17*0.3
+eskom_diesel_gas_produced_energy_2022 = (1826+899)*MW_to_KW*MW_to_KW
+eskom_renewable_energy_produced_energy_2022 = \
+    15073*MW_to_KW*MW_to_KW  # adjusted for capacity without pumped storage
+eskom_nuclear_produced_energy_2022 = 12.4*MW_to_KW*MW_to_KW*MW_to_KW
+eskom_coal_produced_energy_2022 = 191.5*MW_to_KW*MW_to_KW*MW_to_KW
 
 # default probability
 df_eskom_survival = pd.read_csv('data/default_probs_eskom.csv', index_col=None)
@@ -423,7 +444,7 @@ CURRENT_ENERGY_MIX_MAX_CAPACITY = dict(
     # all in MW
     coal=44013.0,
     clean_coal=0.0,
-    hydro=661.4,
+    hydro=661.4+2724,
     wind_onshore=100.0,
     wind_offshore=0.0,
     solar=0.0,
@@ -450,36 +471,102 @@ for k, v in CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ.items():
     current_energy_mix_total_realizeable_capacities[k] = \
         v*CURRENT_REALIZABLE_CAPACITY
 
-# overall and coal power production factor (assuming that coal is the only
-#   energy source with a ppf<1)
+# sold energy factor
+CURRENT_SOLD_ENERGY_FACTOR = \
+    CURRENT_YEARLY_SOLD_ENERGY/CURRENT_YEARLY_PRODUCED_ENERGY
+
+# overall power production factor
 power_production_factor = \
-    CURRENT_YEARLY_SOLD_ENERGY/\
+    CURRENT_YEARLY_PRODUCED_ENERGY_NO_IMPORTS/\
     (CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year)
-coal_power_production_factor = \
-    (power_production_factor -
-     (1-CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["coal"]))/\
-    CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["coal"]
-# power production factor if pumped storage energy use is considered
-power_production_factor1 = \
-    (CURRENT_YEARLY_SOLD_ENERGY+additional_energy_consumed_by_pumped_storage)/\
-    (CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year)
-coal_power_production_factor1 = \
-    (power_production_factor1 -
-     (1-CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["coal"]))/\
-    CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["coal"]
+
+# power production factor for coal
+realizable_coal_energy = \
+    CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year*\
+        CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["coal"]
+power_production_factor_coal = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy
+# change in power production factor for coal due to decommissioning
+realizable_coal_energy2024 = \
+    realizable_coal_energy - 555*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+realizable_coal_energy2027 = \
+    realizable_coal_energy2024 - 1219*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+realizable_coal_energy2028 = \
+    realizable_coal_energy2027 - 847*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+realizable_coal_energy2029 = \
+    realizable_coal_energy2028 - 475*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+realizable_coal_energy2030 = \
+    realizable_coal_energy2029 - 1694*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+realizable_coal_energy2031 = \
+    realizable_coal_energy2030 - 1050*MW_to_KW*hours_per_year*ENERGY_TYPES_DESC[
+        "coal"]["capacity_factor"]
+power_production_factor_coal2024 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2024
+power_production_factor_coal2027 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2027
+power_production_factor_coal2028 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2028
+power_production_factor_coal2029 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2029
+power_production_factor_coal2030 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2030
+power_production_factor_coal2031 = \
+    eskom_coal_produced_energy_2022/realizable_coal_energy2031
+
+
+#power production factor for diesel and gas
+realizable_gas_diesel_energy = \
+    CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year*(
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["diesel"]+
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["gas"])
+power_production_factor_gas_diesel = \
+    eskom_diesel_gas_produced_energy_2022/realizable_gas_diesel_energy
+
+#power production factor for renewable energy
+realizable_renewable_energy = \
+    CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year*(
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["wind_onshore"]+
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["wind_offshore"]+
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["solar"]+
+            CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["hydro"])
+power_production_factor_renewable = \
+    eskom_renewable_energy_produced_energy_2022/realizable_renewable_energy
+
+# power production factor for nuclear
+realizable_nuclear_energy = \
+    CURRENT_REALIZABLE_CAPACITY*MW_to_KW*hours_per_year*\
+        CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ["nuclear"]
+power_production_factor_nuclear = \
+    eskom_nuclear_produced_energy_2022/realizable_nuclear_energy
 
 # dict with current power production factors
 CURRENT_POWER_PRODUCTION_FACTORS = dict()
-for k, v in ENERGY_TYPES_DESC.items():
-    CURRENT_POWER_PRODUCTION_FACTORS[k] = 1.
-CURRENT_POWER_PRODUCTION_FACTORS["coal"] = coal_power_production_factor
-CURRENT_POWER_PRODUCTION_FACTORS["clean_coal"] = coal_power_production_factor
+CURRENT_POWER_PRODUCTION_FACTORS["coal"] = power_production_factor_coal
+CURRENT_POWER_PRODUCTION_FACTORS["clean_coal"] = 0.9
+CURRENT_POWER_PRODUCTION_FACTORS["nuclear"] = power_production_factor_nuclear
+CURRENT_POWER_PRODUCTION_FACTORS["gas"] = power_production_factor_gas_diesel
+CURRENT_POWER_PRODUCTION_FACTORS["clean_gas"] = power_production_factor_gas_diesel
+CURRENT_POWER_PRODUCTION_FACTORS["hydro"] = power_production_factor_renewable
+CURRENT_POWER_PRODUCTION_FACTORS["wind_onshore"] = power_production_factor_renewable
+CURRENT_POWER_PRODUCTION_FACTORS["wind_offshore"] = power_production_factor_renewable
+CURRENT_POWER_PRODUCTION_FACTORS["solar"] = power_production_factor_renewable
+CURRENT_POWER_PRODUCTION_FACTORS["diesel"] = power_production_factor_gas_diesel
+
+current_energy_mix_total_produced_capacities = dict()
+for k, v in CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ.items():
+    current_energy_mix_total_produced_capacities[k] = \
+        v*CURRENT_REALIZABLE_CAPACITY*CURRENT_POWER_PRODUCTION_FACTORS[k]
 
 # emissions factor
 model_yearly_emissions = np.sum([
     CURRENT_POWER_PRODUCTION_FACTORS[energy_type]*
     CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ[energy_type]*
-    CURRENT_YEARLY_SOLD_ENERGY*ENERGY_TYPES_DESC[energy_type][
+    CURRENT_YEARLY_PRODUCED_ENERGY_NO_IMPORTS*ENERGY_TYPES_DESC[energy_type][
         "emission_per_energy_unit"]
     for energy_type in ENERGY_TYPES_DESC.keys()])
 EMISSIONS_FACTOR = eskom_co2e_emissions_2021_2022/model_yearly_emissions
@@ -499,13 +586,15 @@ model_yearly_depreciation = np.sum([
 DEPRECIATION_COST_FACTOR = CURRENT_DEPRECIATION_COSTS/model_yearly_depreciation
 
 POWER_PRODUCTION_FACTORS = [CURRENT_POWER_PRODUCTION_FACTORS]*T50
+ENERGY_SALES_FACTORS = [CURRENT_SOLD_ENERGY_FACTOR]*T50
 
 # Capacity and energy mix scenario based on integrated resource plan for ZA
 #   https://www.energy.gov.za/irp/2019/IRP-2019.pdf p.42
 IRP2030_CAPACITY_CHANGES = {
     "2023": [],
     "2024": [
-        {"energy_type": "coal", "capacity_change": 195*MW_to_KW},
+        {"energy_type": "coal", "capacity_change": -555*MW_to_KW},
+        {"energy_type": "clean_coal", "capacity_change": 750*MW_to_KW},
         {"energy_type": "solar", "capacity_change": 1000*MW_to_KW},
         {"energy_type": "wind_onshore",
          "capacity_change": 1600*MW_to_KW},],
@@ -513,7 +602,7 @@ IRP2030_CAPACITY_CHANGES = {
         {"energy_type": "nuclear", "capacity_change": 1860*MW_to_KW},
         {"energy_type": "wind_onshore",
          "capacity_change": 1600*MW_to_KW},
-        {"energy_type": "gas", "capacity_change": 1000*MW_to_KW},],
+        {"energy_type": "clean_gas", "capacity_change": 1000*MW_to_KW},],
     "2026": [
         {"energy_type": "wind_onshore",
          "capacity_change": 1600 * MW_to_KW},
@@ -523,10 +612,11 @@ IRP2030_CAPACITY_CHANGES = {
         {"energy_type": "wind_onshore",
          "capacity_change": 1600 * MW_to_KW},],
     "2028": [
-        {"energy_type": "coal", "capacity_change": -97*MW_to_KW},
+        {"energy_type": "coal", "capacity_change": -847*MW_to_KW},
+        {"energy_type": "clean_coal", "capacity_change": 750*MW_to_KW},
         {"energy_type": "wind_onshore",
          "capacity_change": 1600 * MW_to_KW},
-        {"energy_type": "gas", "capacity_change": 2000*MW_to_KW},],
+        {"energy_type": "clean_gas", "capacity_change": 2000*MW_to_KW},],
     "2029": [
         {"energy_type": "coal", "capacity_change": -475*MW_to_KW},
         {"energy_type": "solar", "capacity_change": 1000*MW_to_KW},
@@ -657,7 +747,7 @@ current_sold_capacity_config_1 = dict(
     inflation_factor=INFLATION_FACTOR,
     capacities=CURRENT_YEARLY_SOLD_ENERGY,
     energy_mix=CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ,
-    emission_prices=ZA_CARBON_TAX_SCENARIO,
+    emission_prices=ZA_LEVY_SACT_SCENARIO,
     scenarios_emission_prices=EMISSION_PRICE_SCENRIOS,
     NET_investments=0.,
     fuel_prices=FUEL_PRICES_PER_AMOUNT_UNIT,
@@ -680,6 +770,7 @@ current_sold_capacity_config_1 = dict(
     default_prob_credit_ratings=DEFAULT_PROB_CREDIT_RATING_CURVES,
     us_inv_discounting_factor=US_INV_DISCOUNTING_FACTOR,
     power_production_factor=POWER_PRODUCTION_FACTORS,
+    energy_sales_factor=ENERGY_SALES_FACTORS,
     time_amount_per_step=hours_per_year,
     emissions_factor=EMISSIONS_FACTOR,
     depreciation_factor=DEPRECIATION_COST_FACTOR,
@@ -708,78 +799,82 @@ IRP2030_config_0["plot_postfix"] = "IRP2030-base-case"
 # ----- calibrate model: init assets fixed -----
 # fit 1:
 IRP2030_config_1 = copy.deepcopy(IRP2030_config_0)
-IRP2030_config_1["mean_percentage_jump"] = 0.094
+IRP2030_config_1["mean_percentage_jump"] = 0.033
+IRP2030_config_1["init_assets"] = CURRENT_EQUITY
+IRP2030_config_1["fit_mppj"] = False
 IRP2030_config_1["fit_init_assets"] = False
+IRP2030_config_1["single_factor_optimisation"] = True
+IRP2030_config_1["joint_optimisation"] = False
+IRP2030_config_1["increasing_factors"] = True
+IRP2030_config_1["first_fixed"] = True
+# IRP2030_config_1["use_same_mp_for_all"] = False
 IRP2030_config_1["electricity_price_scaling_factor"] = np.array([1.]*28)
 IRP2030_config_1["optimization_kwargs"] = dict(
     method="Nelder-Mead", tol=None, options={"maxiter": 2000})
 IRP2030_config_1["plot_postfix"] = "IRP2030-base-case-fit1"
 
 # fit 2:
-IRP2030_config_2 = copy.deepcopy(IRP2030_config_1)
-IRP2030_config_2["mean_percentage_jump"] = 0.061
-IRP2030_config_2["electricity_price_scaling_factor"] = np.array([1.]*5+[1.1]*23)
+IRP2030_config_2 = copy.deepcopy(IRP2030_config_0)
+IRP2030_config_2["mean_percentage_jump"] = 0.033
+IRP2030_config_2["init_assets"] = CURRENT_EQUITY
+IRP2030_config_2["fit_mppj"] = False
+IRP2030_config_2["fit_init_assets"] = False
+IRP2030_config_2["single_factor_optimisation"] = True
+IRP2030_config_2["joint_optimisation"] = False
+IRP2030_config_2["increasing_factors"] = False
+IRP2030_config_2["first_fixed"] = False
+# IRP2030_config_2["use_same_mp_for_all"] = False
+IRP2030_config_2["electricity_price_scaling_factor"] = np.array([1.]*28)
+IRP2030_config_2["optimization_kwargs"] = dict(
+    method="Nelder-Mead", tol=None, options={"maxiter": 2000})
 IRP2030_config_2["plot_postfix"] = "IRP2030-base-case-fit2"
 
-# ----- calibrate model: init assets fixed to half of the reported equity -----
+# ----- calibrate model: init assets fixed to 33% of the reported equity -----
 # fit 3:
 IRP2030_config_3 = copy.deepcopy(IRP2030_config_0)
-IRP2030_config_3["mean_percentage_jump"] = 0.094
+IRP2030_config_3["mean_percentage_jump"] = 0.033
+IRP2030_config_3["init_assets"] = CURRENT_EQUITY/3
+IRP2030_config_3["fit_mppj"] = False
 IRP2030_config_3["fit_init_assets"] = False
-IRP2030_config_3["init_assets"] = CURRENT_EQUITY*0.5
-IRP2030_config_3["fit_mppj"] = True
+IRP2030_config_3["single_factor_optimisation"] = True
+IRP2030_config_3["joint_optimisation"] = False
+IRP2030_config_3["increasing_factors"] = False
+IRP2030_config_3["first_fixed"] = False
+# IRP2030_config_3["use_same_mp_for_all"] = False
 IRP2030_config_3["electricity_price_scaling_factor"] = np.array([1.]*28)
 IRP2030_config_3["optimization_kwargs"] = dict(
     method="Nelder-Mead", tol=None, options={"maxiter": 2000})
 IRP2030_config_3["plot_postfix"] = "IRP2030-base-case-fit3"
 
-# fit 4:
-IRP2030_config_4 = copy.deepcopy(IRP2030_config_0)
-IRP2030_config_4["mean_percentage_jump"] = 0.06
-IRP2030_config_4["init_assets"] = CURRENT_EQUITY*0.5
-IRP2030_config_4["fit_init_assets"] = True
-IRP2030_config_4["fit_mppj"] = True
-IRP2030_config_4["electricity_price_scaling_factor"] = \
-    np.array([1., 1.2, 1.4, 1.4] + [1.2]*24)
-IRP2030_config_4["optimization_kwargs"] = dict(
-    method="Nelder-Mead", tol=None, options={"maxiter": 2000})
-IRP2030_config_4["plot_postfix"] = "IRP2030-base-case-fit4"
-
-# fit 5:
-IRP2030_config_5 = copy.deepcopy(IRP2030_config_0)
-IRP2030_config_5["mean_percentage_jump"] = 0.049
-IRP2030_config_5["init_assets"] = CURRENT_EQUITY
-IRP2030_config_5["fit_init_assets"] = 0.5
-IRP2030_config_5["fit_mppj"] = True
-IRP2030_config_5["electricity_price_scaling_factor"] = \
-    np.array([
-        1.,1.12673805,1.34653936,1.2925787,1.25516392,1.23180465,1.2564611,
-        1.22921723,1.20939743,1.13953121,1.15812814,1.17836633,1.14980597,
-        1.22058136,1.19920144,1.23956927,1.19517954,1.2390811,1.23427301,
-        1.22023396,1.20133923,1.27200831,1.24524854,1.22877642,1.21335901,
-        1.29130182,1.20906844,1.28186217])
-IRP2030_config_5["optimization_kwargs"] = dict(
-    method="Nelder-Mead", tol=None, options={"maxiter": 2000})
-IRP2030_config_5["plot_postfix"] = "IRP2030-base-case-fit5"
-
-
-
-# ---- fitted model
+# ----------------------------- fitted model -----------------------------------
 IRP2030_config_market_cal = copy.deepcopy(IRP2030_config_0)
-IRP2030_config_market_cal["mean_percentage_jump"] = 0.04911192763532417
-IRP2030_config_market_cal["init_assets"] = CURRENT_EQUITY*0.5000223205212551
+IRP2030_config_market_cal["mean_percentage_jump"] = 0.033
+IRP2030_config_market_cal["init_assets"] = CURRENT_EQUITY/3
+IRP2030_config_market_cal["first_fixed"] = False
 IRP2030_config_market_cal["electricity_price_scaling_factor"] = \
     np.array([
-        1.,1.12671805,1.34679554,1.29171012,1.25755471,1.22488008,1.25443813,
-        1.23972701,1.21026818,1.12856752,1.17802094,1.19647877,1.16723181,
-        1.16911273,1.17013379,1.21590257,1.22494943,1.20458228,1.1878981,
-        1.19654374,1.31611408,1.32397877,1.29489235,1.28759401,1.20725433,
-        1.30942762,1.21980351,1.25793086])
-IRP2030_config_market_cal["mean_percentages_to_plot"] = [0.0556,]
+        0.5014318970959596, 0.8922730883787193, 0.8866963815763523,
+        0.876218816911241, 1.0704978079586251, 1.0533531165030376,
+        1.0694115070222407, 1.059176904708942, 1.0434547475296685,
+        1.0112543861801202, 1.057026031738705, 1.0655586043098035,
+        1.0720366412774436, 1.0811045072451813, 1.0756145234193268,
+        1.150283310921191, 1.1644132781566985, 1.1434902270648206,
+        1.1542935535174017, 1.143472051453176, 1.265915993378348,
+        1.3061122369396416, 1.2938674347183325, 1.3063603174626761,
+        1.3063603174626761, 1.3063603174626761, 1.3483371460280678,
+        1.285133842308002])
+IRP2030_config_market_cal["mean_percentages_to_plot"] = [0.033,]
 IRP2030_config_market_cal["inflation_adjusted"] = True
+IRP2030_config_market_cal["scenarios_emission_prices"] = \
+    EMISSION_PRICE_SCENRIOS_LEVY
 
 IRP2030_config_market_cal1 = copy.deepcopy(IRP2030_config_market_cal)
 IRP2030_config_market_cal1["use_running_default_probs"] = False
+
+IRP2030_config_market_cal_nolevy = copy.deepcopy(IRP2030_config_market_cal)
+IRP2030_config_market_cal_nolevy["scenarios_emission_prices"] = \
+    EMISSION_PRICE_SCENRIOS
+
 
 
 # -------------- IRP2030 Green continue (coal-, renewables+) -------------------
@@ -793,6 +888,11 @@ IRP2030_green_continue_config["plot_postfix"] = "IRP2030-green-continuation"
 
 IRP2030_green_continue_config1 = copy.deepcopy(IRP2030_green_continue_config)
 IRP2030_green_continue_config1["use_running_default_probs"] = False
+
+IRP2030_green_continue_config_nolevy = copy.deepcopy(
+    IRP2030_green_continue_config)
+IRP2030_green_continue_config_nolevy["scenarios_emission_prices"] = \
+    EMISSION_PRICE_SCENRIOS
 
 
 # -------- IRP2030 aggressive green continue (coal--, renewables++) -----
@@ -811,13 +911,18 @@ IRP2030_aggr_green_continue_config1 = copy.deepcopy(
     IRP2030_aggr_green_continue_config)
 IRP2030_aggr_green_continue_config1["use_running_default_probs"] = False
 
+IRP2030_aggr_green_continue_config_nolevy = copy.deepcopy(
+    IRP2030_aggr_green_continue_config)
+IRP2030_aggr_green_continue_config_nolevy["scenarios_emission_prices"] = \
+    EMISSION_PRICE_SCENRIOS
+
 
 # ---- joint plotting configs -----
 joint_min_elect_price_plot_config = dict(
     plotfunc="plot_min_electricity_prices",
     configs=[
-        IRP2030_config_market_cal, IRP2030_green_continue_config,
-        IRP2030_aggr_green_continue_config],
+        IRP2030_config_market_cal_nolevy, IRP2030_green_continue_config_nolevy,
+        IRP2030_aggr_green_continue_config_nolevy],
     plots_per_line=3, figsize=(6.4*3/1.5, 4.8/1.5),
     suptitle_kwargs=dict(y=1.15, fontsize=16),
     legend_kwargs=dict(loc='upper center', ncol=4, bbox_to_anchor=(0.5, -0.05)),
@@ -843,8 +948,8 @@ joint_rlz_cap_plot_config = dict(
 joint_fitdefaultprobs_meanelecprice_plot_config = dict(
     plotfunc=["fit_electricity_price_scaling_factors",
               "plot_mean_electricity_prices_for_MPPJ"],
-    configs=[IRP2030_config_5, IRP2030_config_market_cal],
-    plots_per_line=2, figsize=(10*2/1.5, 4.8/1.5),
+    configs=[IRP2030_config_3, IRP2030_config_market_cal],
+    plots_per_line=2, figsize=(6.4*2/1.5, 4.8/1.5),
     twinx=False,
     plot_suptitle=False,
     remove_unnecessary_xlabel=False,
@@ -964,7 +1069,12 @@ def print_values_from_paper():
     print("annual maintenance costs (ZAR):", maintenance_costs)
     print("annual labour costs (ZAR):", labour_costs)
     print("annual sold energy (KWh):", CURRENT_YEARLY_SOLD_ENERGY)
+    print("annual produced energy (KWh):", CURRENT_YEARLY_PRODUCED_ENERGY_NO_IMPORTS)
+    print("annual produced energy (KWh) with imports:", CURRENT_YEARLY_PRODUCED_ENERGY)
     print("annual emissions (kg)):", eskom_co2e_emissions_2021_2022)
+    print("SA Carbon Tax (ZAR/kg):", ZA_CARBON_TAX_SCENARIO[0])
+    print("environmental levy (ZAR/kg):", env_levy_per_co2e)
+    print("factor SACT/levy:", ZA_CARBON_TAX_SCENARIO[0]/env_levy_per_co2e)
     print("-" * 80)
     print("Capacities (MW) and Energy mix:")
     for energy_type in ENERGY_TYPES:
@@ -973,20 +1083,30 @@ def print_values_from_paper():
               CURRENT_ENERGY_MIX_MAX_RATIOS[energy_type],
               "realizable:",
               current_energy_mix_total_realizeable_capacities[energy_type],
-              CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ[energy_type])
+              CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ[energy_type],
+              "produced:",
+              current_energy_mix_total_produced_capacities[energy_type],
+              current_energy_mix_total_produced_capacities[energy_type]/np.sum(
+                  list(current_energy_mix_total_produced_capacities.values()))
+              )
     print("\t", "total", "-", "maximal:",
           current_total_max_capacity,
           np.sum(list(CURRENT_ENERGY_MIX_MAX_RATIOS.values())),
           "realizable:",
           CURRENT_REALIZABLE_CAPACITY,
-          np.sum(list(CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ.values())))
+          np.sum(list(CURRENT_ENERGY_MIX_CAPACITY_FACTOR_ADJ.values())),
+          "produced:",
+          np.sum(list(current_energy_mix_total_produced_capacities.values())),
+          )
     print("-" * 80)
-    print("power production factor:", power_production_factor)
-    print("power production factor coal:", coal_power_production_factor)
-    print("power production factor (pumped storage adjusted):",
-          power_production_factor1)
-    print("power production factor coal (pumped storage adjusted):",
-          coal_power_production_factor1)
+    print("power production factor overall:", power_production_factor)
+    print("power production factors per energy type:")
+    for k, v in CURRENT_POWER_PRODUCTION_FACTORS.items():
+        print("\t", k, ":", v)
+    print("power production factor coal 2031 through decommissioning:",
+          power_production_factor_coal2031)
+    print("energy sales factor:", CURRENT_SOLD_ENERGY_FACTOR)
+    print("model implied emissions:", model_yearly_emissions)
     print("emission factor:", EMISSIONS_FACTOR)
     print("depreciation factor:", DEPRECIATION_COST_FACTOR)
     print("-" * 80)

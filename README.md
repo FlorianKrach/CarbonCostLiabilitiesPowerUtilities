@@ -48,9 +48,9 @@ pip install -r requirements.txt
 
 - plot minimal electricity prices in the 3 energy mix scenarios:
   ```shell
-  python run.py --function=plot_min_electricity_prices --config=IRP2030_config_market_cal
-  python run.py --function=plot_min_electricity_prices --config=IRP2030_green_continue_config
-  python run.py --function=plot_min_electricity_prices --config=IRP2030_aggr_green_continue_config
+  python run.py --function=plot_min_electricity_prices --config=IRP2030_config_market_cal_nolevy
+  python run.py --function=plot_min_electricity_prices --config=IRP2030_green_continue_config_nolevy
+  python run.py --function=plot_min_electricity_prices --config=IRP2030_aggr_green_continue_config_nolevy
   ```
   
   joint plot of the 3 energy mix scenarios:
@@ -67,9 +67,9 @@ pip install -r requirements.txt
     
   - calibrate the electricity model scaling factors to the market probabilities of default, with smaller init_assets:
     ```shell
-    python run.py --function=fit_electricity_price_scaling_factors --config=IRP2030_config_5
-    ```
-
+    python run.py --function=fit_electricity_price_scaling_factors --config=IRP2030_config_3
+    ``` 
+  
   - default probabilities and bond prices and with electricity model __calibrated to the market probability of default__
     ```shell
     python run.py --function=plot_mean_electricity_prices_for_MPPJ --config=IRP2030_config_market_cal
