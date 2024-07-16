@@ -1,6 +1,6 @@
 # Modelling of a Power Utility Firm
 
-This is the official implementation of the paper [The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086).
+This is the official implementation of the paper [The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://www.worldscientific.com/doi/10.1142/S0219024924500134).
 
 
 ## Installation & Requirements
@@ -112,14 +112,18 @@ This code can be used in accordance with the [LICENSE](LICENSE).
 ## Citation
 
 If you use this code for your publications, please cite our paper:
-[The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086).
+[The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios]([https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086](https://www.worldscientific.com/doi/10.1142/S0219024924500134).
 ```
-@article{
-      krach2023financialimpact,
-      title={The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios}, 
-      author={Krach, Florian and Macrina, Andrea and Kanter, Ashley and Hampwaye, Eba and Hlalukana, Siphokazi and Ratelee, Nchakha},
-      year={2023},
-      url={https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4571086},
+@article{doi:10.1142/S0219024924500134,
+author = {KRACH, FLORIAN and MACRINA, ANDREA and KANTER, ASHLEY and HAMPWAYE, EBA and HLALUKANA, SIPHOKAZI and RATEELE, NCHAKHA THATO},
+title = {THE FINANCIAL IMPACT OF CARBON EMISSIONS ON POWER UTILITIES UNDER CLIMATE SCENARIOS},
+journal = {International Journal of Theoretical and Applied Finance},
+volume = {0},
+number = {0},
+pages = {2450013},
+year = {0},
+doi = {10.1142/S0219024924500134},
+URL = {https://doi.org/10.1142/S0219024924500134}
 }
 ```
 
