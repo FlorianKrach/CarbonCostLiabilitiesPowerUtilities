@@ -1,5 +1,8 @@
 # Modelling of a Power Utility Firm
 
+[![DOI](https://zenodo.org/badge/674551959.svg)](https://zenodo.org/doi/10.5281/zenodo.12747897)
+
+
 This is the official implementation of the paper [The Financial Impact of Carbon Emissions on Power Utilities Under Climate Scenarios](https://www.worldscientific.com/doi/10.1142/S0219024924500134).
 
 
